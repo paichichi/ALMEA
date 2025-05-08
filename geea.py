@@ -23,9 +23,7 @@ from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bo
 
 
 class CVAE(nn.Module):
-    # in_dim是300
-    # hidden_dims是[300, 300, 300]
-    # latent_dim是300
+
     def __init__(self, args, in_dim, hidden_dims, latent_dim=None, **kwargs):
         super(CVAE, self).__init__()
         self.args = args
