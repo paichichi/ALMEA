@@ -1,43 +1,29 @@
 import math
 import os
-import os.path as osp
-import pickle
-
-import random
 import torch
 import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
-from scipy.stats import kendalltau
-from torch import optim
-from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
-from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler
 from datetime import datetime
 from easydict import EasyDict as edict
 from tqdm import tqdm
 from collections import defaultdict
 
-from transformers import get_cosine_schedule_with_warmup
-
-from ACS_ADMM import soft_threshold_L21, optimize_ds3_regularized, find_representatives_fast
+from src.ACS_ADMM import optimize_ds3_regularized, find_representatives_fast
 from config import config
-from models.RANKER import RANKER, Discriminator
-from src.tensorBoardManager import TensorBoardManager
-from torchlight import initialize_exp, set_seed, get_dump_path
-from src.data import load_data, Collator_base, EADataset
-from src.utils import set_optim, Loss_log, pairwise_distances, csls_sim
-# add model here
-from models import MCLEA
 
-from src.distributed_utils import init_distributed_mode, dist_pdb, is_main_process, reduce_value, cleanup
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
+from src.torchlight import initialize_exp, set_seed, get_dump_path
+from src.data_processing.data import load_data, Collator_base
+from src.data_processing.utils import set_optim, Loss_log, pairwise_distances, csls_sim
+
+from src.pre_train_models import MCLEA
+
+from src.data_processing.distributed_utils import is_main_process
+
 import torch.nn.functional as F
-import scipy
 import gc
-import copy
+
 
 
 class Runner:
@@ -140,12 +126,10 @@ class Runner:
                     self.logger.info(f'Incremental Training Start {cycle}')
                 else:
                     self.logger.info("-----------------------------------------------------------------------")
-                    self.logger.info(
-                        f"Training configuration: "
-                        f"Base model training (self.args.epoch = {self.args.epoch}), "
-                        f"Active learning cycles (self.args.CYCLES = {self.args.CYCLES}), "
-                        f"Epochs per cycle (self.args.epoch_per_CYCLES = {self.args.epoch_per_CYCLES})"
-                    )
+                    self.logger.info(f"Training configuration")
+                    self.logger.info(f"Base model training: {self.args.epoch} epochs.")
+                    self.logger.info(f"Active learning: {self.args.CYCLES} cycles × {self.args.epoch_per_CYCLES} epochs. ")
+                    self.logger.info(f"Total: {self.args.epoch + self.args.epoch_per_CYCLES * self.args.CYCLES} epochs.")
                     self.logger.info("Training Start")
 
                 for i in range(self.args.epoch):
@@ -260,7 +244,7 @@ class Runner:
         max_iteration = 1000
         sigma = 3
         with torch.no_grad():
-            weighting_list = self.model.geea.active_learning_weighting(sub_embs)
+            # weighting_list = self.model.almea.active_learning_weighting(sub_embs)
             final_emb = self.model.joint_emb_generat()
             final_emb = F.normalize(final_emb)
             target_distance = pairwise_distances(final_emb[self.left_ents], final_emb[self.right_ents])

@@ -12,7 +12,7 @@ def joint_probability_matrix(modality):
     prob = modality / tensor_sum
     return prob
 
-def MMI(source, target, scale_factor=100):
+def semantic_calibration(source, target, scale_factor=100):
     source = joint_probability_matrix(source)
     target = joint_probability_matrix(target)
 
