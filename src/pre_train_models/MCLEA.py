@@ -4,8 +4,7 @@ import torch.nn as nn
 import numpy as np
 from .MCLEA_tools import MultiModalEncoder
 from .MCLEA_loss import CustomMultiLossLayer, ial_loss, icl_loss
-from src.utils import pairwise_distances
-from geea import GEEA
+from src.almea import ALMEA
 
 
 class MCLEA(nn.Module):
@@ -49,7 +48,7 @@ class MCLEA(nn.Module):
         self.concrete_features = [self.adj.cpu().to_dense(), self.img_features, self.rel_features, self.att_features,
                                   self.name_features, self.char_features]
 
-        self.geea = GEEA(args, kgs, self.concrete_features,
+        self.almea = ALMEA(args, kgs, self.concrete_features,
                          sub_dims=[self.multimodal_encoder.n_units[-1], self.args.img_dim, self.args.attr_dim,
                                    self.args.attr_dim,
                                    self.args.name_dim, self.args.char_dim],
@@ -75,12 +74,8 @@ class MCLEA(nn.Module):
         loss_all = 0.
         loss_all += loss_joi + in_loss + align_loss
 
-        # if len(selected_pairs) is not 0:
-        #     np.random.shuffle(selected_pairs)
-        #     batch = np.concatenate((batch, selected_pairs), axis=0)
-
-        geea_loss = self.geea(batch, [gph_emb, img_emb, rel_emb, att_emb, name_emb, char_emb], joint_emb)
-        loss_all += geea_loss
+        almea_loss = self.almea(batch, [gph_emb, img_emb, rel_emb, att_emb, name_emb, char_emb], joint_emb)
+        loss_all += almea_loss
 
         weight_raw = self.multimodal_encoder.fusion.weight.reshape(-1).tolist()
         loss_dic = {"joint_Intra_modal": loss_joi.item(

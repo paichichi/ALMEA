@@ -50,6 +50,10 @@ def load_data(logger, args):
 
 def load_eva_data(logger, args):
     file_dir = osp.join(args.data_path, args.data_choice, args.data_split)
+    # print(args.data_path)
+    # print(args.data_choice)
+    # print(args.data_split)
+    # print(file_dir)
     lang_list = [1, 2]
     ent2id_dict, ills, triples, r_hs, r_ts, ids = read_raw_data(file_dir, lang_list)
     e1 = os.path.join(file_dir, 'ent_ids_1')

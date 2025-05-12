@@ -1,9 +1,8 @@
-import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import torch.nn.init as init
-from src.utils import csls_sim
+from src.data_processing.utils import csls_sim
 
 class Discriminator(nn.Module):
     """Adversary architecture(Discriminator) for WAE-GAN."""

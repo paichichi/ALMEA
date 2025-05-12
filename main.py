@@ -1,43 +1,29 @@
 import math
 import os
-import os.path as osp
-import pickle
-
-import random
 import torch
 import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
-from scipy.stats import kendalltau
-from torch import optim
-from torch.optim.lr_scheduler import StepLR
 from torch.utils.tensorboard import SummaryWriter
-from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
-from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader
+from torch.cuda.amp import GradScaler
 from datetime import datetime
 from easydict import EasyDict as edict
 from tqdm import tqdm
 from collections import defaultdict
 
-from transformers import get_cosine_schedule_with_warmup
-
-from ADMM import compute_lambda_l21, ds3solver_regularized, find_representatives_fast
+from src.ACS_ADMM import optimize_ds3_regularized, find_representatives_fast
 from config import config
-from models.RANKER import RANKER, Discriminator
-from src.tensorBoardManager import TensorBoardManager
-from torchlight import initialize_exp, set_seed, get_dump_path
-from src.data import load_data, Collator_base, EADataset
-from src.utils import set_optim, Loss_log, pairwise_distances, csls_sim
-# add model here
-from models import MCLEA
 
-from src.distributed_utils import init_distributed_mode, dist_pdb, is_main_process, reduce_value, cleanup
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
+from src.torchlight import initialize_exp, set_seed, get_dump_path
+from src.data_processing.data import load_data, Collator_base
+from src.data_processing.utils import set_optim, Loss_log, pairwise_distances, csls_sim
+
+from src.pre_train_models import MCLEA
+
+from src.data_processing.distributed_utils import is_main_process
+
 import torch.nn.functional as F
-import scipy
 import gc
-import copy
+
 
 
 class Runner:
@@ -62,8 +48,8 @@ class Runner:
         self.dataloader_init(train_set=self.train_set, eval_set=self.eval_set, test_set=self.test_set)
         self.model_list = [self.model]
 
-        train_epoch_1_stage = self.args.epoch
-        self.optim_init(self.args, total_epoch=train_epoch_1_stage)
+        # train_epoch_1_stage = self.args.epoch
+        self.optim_init(self.args)
         self.add_count = 0
 
 
@@ -72,12 +58,9 @@ class Runner:
 
 
     def model_choice(self):
-        # 加载模型
         self.model = MCLEA(self.KGs, self.args)
         self.model = self._load_model(self.model)
 
-        total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
-        self.logger.info(f"total params num: {total_params}")
 
     def data_init(self):
         self.KGs, self.non_train, self.train_set, self.eval_set, self.test_set, self.test_ill_ = load_data(self.logger,
@@ -96,25 +79,15 @@ class Runner:
 
         self.eval_sampler = None
 
-    def optim_init(self, opt, total_step=None, total_epoch=None, accumulation_step=None):
-        # step_per_epoch = len(self.train_dataloader)
-        # if total_epoch is not None:
-        #     opt.total_steps = int(step_per_epoch * total_epoch)
-        # else:
-        #     opt.total_steps = int(step_per_epoch * opt.epoch) if total_step is None else int(total_step)
-        # opt.warmup_steps = int(opt.total_steps * 0.15)
-        #
-        # if self.rank == 0 and total_step is None:
-        #     self.logger.info(f"warmup_steps: {opt.warmup_steps}")
-        #     self.logger.info(f"total_steps: {opt.total_steps}")
-        #     self.logger.info(f"weight_decay: {opt.weight_decay}")
+    def optim_init(self, opt, accumulation_step=None):
+
         freeze_part = []
         self.optimizer, self.scheduler = set_optim(opt, self.model_list, freeze_part, accumulation_step)
 
 
     def dataloader_init(self, train_set=None, eval_set=None, test_set=None):
         bs = self.args.batch_size
-        # 将张量转换成numpy数组
+
         collator = Collator_base(self.args)
         self.args.workers = min([os.cpu_count(), self.args.batch_size, self.args.workers])
         if train_set is not None:
@@ -124,30 +97,9 @@ class Runner:
         if eval_set is not None:
             self.eval_dataloader = self._dataloader(eval_set, bs, collator)
 
-    def _load_model(self, model, model_name=None):
-        # if model_name is None:
-        #     model_name = self.args.model_name_save
-        # save_path = osp.join(self.args.data_path, 'my_solution', 'save')
-        # save_path = osp.join(save_path, f'{model_name}.pkl')
-        # if (len(model_name) == 0 or not os.path.exists(save_path)) and self.rank == 0:
-        #     if len(model_name) > 0:
-        #         self.logger.info(f"{model_name}.pkl not exist!!")
-        #     else:
-        #         self.logger.info("Random init...")
+    def _load_model(self, model):
         model.to(self.args.device)
         return model
-
-        # if 'Dist' in self.args.model_name:
-        #     model.load_state_dict(
-        #         {k.replace('module.', ''): v for k, v in torch.load(save_path, map_location=self.args.device).items()})
-        # else:
-        #     model.load_state_dict(torch.load(save_path, map_location=self.args.device))
-        #
-        # model.to(self.args.device)
-        # if self.rank == 0:
-        #     self.logger.info(f"loading model [{model_name}.pkl] done!")
-        #
-        # return model
 
     def run(self):
         self.loss_log = Loss_log()
@@ -167,12 +119,6 @@ class Runner:
         self.early_stop_count = self.early_stop_init
         self.stage = 0
 
-        # budgets = math.ceil(len(self.test_ill_) * (0.3 - self.args.data_rate))
-        # logger.info(f'The budget sizes is {budgets}')
-        # self.budget_per_round = math.ceil(budgets / 5)
-        # logger.info(f"The budget sizes per cycles is {self.budget_per_round}")
-
-        # total_epoch = self.args.epoch + 300 * (self.args.CYCLES - 1)
         with tqdm(total=self.args.epoch + self.args.epoch_per_CYCLES*self.args.CYCLES) as _tqdm:
             for cycle in range(self.args.CYCLES+1):
                 if cycle != 0:
@@ -180,41 +126,17 @@ class Runner:
                     self.logger.info(f'Incremental Training Start {cycle}')
                 else:
                     self.logger.info("-----------------------------------------------------------------------")
+                    self.logger.info(f"Training configuration")
+                    self.logger.info(f"Base model training: {self.args.epoch} epochs.")
+                    self.logger.info(f"Active learning: {self.args.CYCLES} cycles × {self.args.epoch_per_CYCLES} epochs. ")
+                    self.logger.info(f"Total: {self.args.epoch + self.args.epoch_per_CYCLES * self.args.CYCLES} epochs.")
                     self.logger.info("Training Start")
 
                 for i in range(self.args.epoch):
-                    # if self.args.dist and not self.args.only_test:
-                    #     self.train_sampler.set_epoch(i)
-                    # -------------------------------
                     self.epoch = i
-                    # if self.args.il and (self.epoch == self.args.il_start and self.stage == 0) or (
-                    #         self.early_stop_count <= 0 and self.epoch <= self.args.il_start):
-                    #     if self.early_stop_count <= 0:
-                    #         logger.info(f"Early stop in epoch {self.epoch}... Begin iteration....")
-                    #     self.stage = 1
-                    #     self.early_stop_init = 800
-                    #     self.early_stop_count = self.early_stop_init
-                    #
-                    #     self.step = 1
-                    #     self.args.lr = self.args.lr / 5
-                    #     self.optim_init(self.args, total_epoch=(self.args.epoch - self.args.il_start) * 3)
-                    #     if self.best_model_wts is not None:
-                    #         self.logger.info("load from the best model before IL... ")
-                    #         self.model.load_state_dict(self.best_model_wts)
-                    #     name = self._save_name_define()
-                    #     self.test(save_name=f"{name}_test_ep{self.args.epoch}_no_iter")
-                    #
-                    # if self.stage == 1 and (self.epoch + 1) % self.args.semi_learn_step == 0 and self.args.il:
-                    #     self.il_for_ea()
-                    #
-                    # if self.stage == 1 and (self.epoch + 1) % (self.args.semi_learn_step * 10) == 0 and len(
-                    #         self.new_links) != 0 and self.args.il:
-                    #     self.il_for_data_ref()
 
-                    # 训练模型
                     curr_loss, sub_embs = self.train(_tqdm)
                     self.train_losses.append(curr_loss)
-                    # self.active_learning_sampling(_tqdm, sub_embs, cycle)
 
                     self.loss_log.update(self.curr_loss)
                     self.loss_item = self.loss_log.get_loss()
@@ -224,12 +146,8 @@ class Runner:
                     if (i + 1) % self.args.eval_epoch == 0:
                         self.eval()
                     _tqdm.update(1)
-                    # if self.stage == 1 and self.early_stop_count <= 0:
-                    #     logger.info(f"Early stop in epoch {self.epoch}")
-                    #     break
-                    # break
+
                 self.logger.info("-----------------------------------------------------------------------")
-                torch.save(self.model.state_dict(), "FBYG15K_model_parameters_0.2.pth")
 
                 self.eval()
                 if cycle != self.args.CYCLES:
@@ -240,16 +158,11 @@ class Runner:
                     self.args.epoch = self.args.epoch_per_CYCLES
                 else:
                     break
-                break
 
         name = self._save_name_define()
-        # if self.best_model_wts is not None:
-        #     self.logger.info("load from the best model before final testing ... ")
-        #     self.model.load_state_dict(self.best_model_wts)
         self.test(save_name=f"{name}_test_ep{self.args.epoch}")
 
         if self.rank == 0:
-            # 记录的最小损失值
             self.logger.info(f"min loss {self.loss_log.get_min_loss()}")
 
     def _save_name_define(self):
@@ -261,24 +174,6 @@ class Runner:
         name = f'{self.args.exp_id}_{prefix}'
         return name
 
-    # def il_for_ea(self):
-    #     with torch.no_grad():
-    #         final_emb = self.model.joint_emb_generat()
-    #         final_emb = F.normalize(final_emb)
-    #         self.new_links = self.model.Iter_new_links(self.epoch, self.non_train["left"], final_emb,
-    #                                                    self.non_train["right"], new_links=self.new_links)
-    #         if (self.epoch + 1) % (self.args.semi_learn_step * 5) == 0:
-    #             self.logger.info(f"[epoch {self.epoch}] #links in candidate set: {len(self.new_links)}")
-
-    # def il_for_data_ref(self):
-    #     self.non_train["left"], self.non_train["right"], self.train_ill, self.new_links = self.model.data_refresh(
-    #         self.logger, self.train_ill, self.test_ill_, self.non_train["left"], self.non_train["right"],
-    #         new_links=self.new_links)
-    #     set_seed(self.args.random_seed)
-    #     self.train_set = EADataset(self.train_ill)
-    #     self.dataloader_init(train_set=self.train_set)
-
-    # 创建一个数据加载器 collator 数据处理函数
     def _dataloader(self, train_set, batch_size, collator):
 
         train_dataloader = DataLoader(
@@ -348,11 +243,8 @@ class Runner:
     def active_learning_sampling(self, _tqdm, sub_embs, cycle):
         max_iteration = 1000
         sigma = 3
-        """
-        ADMM - Sorting version, A, C, D
-        """
         with torch.no_grad():
-            weighting_list = self.model.geea.active_learning_weighting(sub_embs)
+            # weighting_list = self.model.almea.active_learning_weighting(sub_embs)
             final_emb = self.model.joint_emb_generat()
             final_emb = F.normalize(final_emb)
             target_distance = pairwise_distances(final_emb[self.left_ents], final_emb[self.right_ents])
@@ -382,20 +274,6 @@ class Runner:
             x_index = self.train_set[:, 0]
             y_index = self.train_set[:, 1]
 
-            # data_to_save = {
-            #     'weighting_list': weighting_list,
-            #     'final_emb': final_emb,
-            #     'left_ents': left_ents,
-            #     'right_ents': right_ents,
-            #     'min_distances': min_distances,
-            #     'x_index': x_index,
-            #     'y_index': y_index
-            # }
-            #
-            # # 写入到 pkl 文件
-            # with open('FBDB_al_data_2.pkl', 'wb') as f:
-            #     pickle.dump(data_to_save, f)
-
             A_matrix_x = pairwise_distances(final_emb[left_ents], final_emb[left_ents])
             A_matrix_x = 1 - csls_sim(1 - A_matrix_x, self.args.csls_k)
             A_matrix_x = self.min_max_Normalization(A_matrix_x)
@@ -409,15 +287,11 @@ class Runner:
             space_distance_x = pairwise_distances(final_emb[left_ents], final_emb[x_index])
             space_distance_x = 1 - csls_sim(1 - space_distance_x, self.args.csls_k)
             space_distance_x = self.min_max_Normalization(space_distance_x)
-            # KT_distance_x = self.pairwise_kendall_tau_distance(weighting_list[left_ents], weighting_list[x_index])
-            # KT_distance_x = min_max_Normalization(KT_distance_x)
             KT_score_x = space_distance_x
 
             space_distance_y = pairwise_distances(final_emb[right_ents], final_emb[y_index])
             space_distance_y = 1 - csls_sim(1 - space_distance_y, self.args.csls_k)
             space_distance_y = self.min_max_Normalization(space_distance_y)
-            # KT_distance_y = self.pairwise_kendall_tau_distance(weighting_list[right_ents], weighting_list[y_index])
-            # KT_distance_y = min_max_Normalization(KT_distance_y)
             KT_score_y = space_distance_y
 
             KT_score_pair = (KT_score_x + KT_score_y) / 2
@@ -425,12 +299,7 @@ class Runner:
             C_diversity_score = self.diversity_loss_score(KT_score_pair, sigma)
             C_diversity_score = torch.diag(C_diversity_score)
 
-            # lambda_mean_A1 = compute_lambda_l21(A_matrix_xy_pair, strategy='mean', factor=alpha1)
-            # lambda_mean_C = compute_lambda_l21(C_diversity_score, strategy='mean', factor=alpha1)
-            # lambda1 = 0.5 * lambda_mean_A1 + 0.5 * lambda_mean_C
-            # print(lambda1)
-
-            Z_C = ds3solver_regularized(A_matrix_xy_pair, self.args.lambda_, self.args.rho, C_diversity_score, max_iteration,
+            Z_C = optimize_ds3_regularized(A_matrix_xy_pair, self.args.lambda_, self.args.rho, C_diversity_score, max_iteration,
                                         self.args.early_stop_threshold)
             Z_C_Ind = find_representatives_fast(Z_C)
 
@@ -458,15 +327,7 @@ class Runner:
         self.loss_log.acc_init()
         accumulation_steps = self.args.accumulation_steps
 
-        # test_batch
         for batch in self.train_dataloader:
-            print(len(batch))
-            # import csv
-            # with open('batch.csv', mode='a', newline='') as file:
-            #     writer = csv.writer(file)
-            #     if file.tell() == 0:  # 如果是新文件，则写入表头
-            #         writer.writerow(['x_item', 'y_item'])
-            #     writer.writerows(batch)
             loss, output, sub_embs = self.model(batch)
             loss = loss / accumulation_steps
             self.scaler.scale(loss).backward()
@@ -505,8 +366,6 @@ class Runner:
             self.curr_loss_dic[key] += output['loss_dic'][key]
         if 'weight' in output and output['weight'] is not None:
             self.weight = output['weight']
-        # if 'loss_weight' in output and output['loss_weight'] is not None:
-        #     self.loss_weight = output['loss_weight']
 
     def update_loss_log(self):
         vis_dict = {"train_loss": self.curr_loss}
@@ -519,16 +378,7 @@ class Runner:
             weight_dic["attr"] = self.weight[1]
             weight_dic["rel"] = self.weight[2]
             weight_dic["graph"] = self.weight[3]
-            # if self.args.w_name or self.args.w_char:
-            #     weight_dic["name"] = self.weight[4]
-            #     weight_dic["char"] = self.weight[5]
             self.writer.add_scalars("modal_weight", weight_dic, self.step)
-
-        # if self.loss_weight is not None and self.loss_weight != [1, 1]:
-        #     weight_dic = {}
-        #     weight_dic["mask"] = 1 / (self.loss_weight[0] ** 2)
-        #     weight_dic["kpi"] = 1 / (self.loss_weight[1] ** 2)
-        #     self.writer.add_scalars("loss_weight", weight_dic, self.step)
 
         self.curr_loss = 0.
         for key in self.curr_loss_dic:
@@ -583,20 +433,10 @@ class Runner:
             for i in range(len(top_k)):
                 if rank < top_k[i]:
                     acc_l2r[i] += 1
-            # save idx, correct rank pos, and indices
             if last_epoch:
                 indices = indices.cpu().numpy()
                 to_write.append([idx, rank, test_left_np[idx], test_right_np[idx], test_right_np[indices[0]],
                                  test_right_np[indices[1]], test_right_np[indices[2]]])
-        # if last_epoch:
-        #     import csv
-        #     if save_name == "":
-        #         save_name = self.args.model_name
-        #     save_pred_path = osp.join(self.args.data_path, self.args.model_name, f"{save_name}_pred")
-        #     os.makedirs(save_pred_path, exist_ok=True)
-        #     with open(osp.join(save_pred_path, f"{self.args.data_choice}_pred.txt"), "w") as f:
-        #         wr = csv.writer(f, dialect='excel')
-        #         wr.writerows(to_write)
 
         for idx in range(test_right.shape[0]):
             _, indices = torch.sort(distance[:, idx], descending=False)
@@ -632,10 +472,6 @@ class Runner:
         if mrr_l2r > max(self.loss_log.acc) and not last_epoch:
             self.logger.info(f"Best model update in Ep {self.epoch}: MRR from [{max(self.loss_log.acc)}] --> [{mrr_l2r}] ... ")
             self.loss_log.update_acc(mrr_l2r)
-            # self.early_stop_count = self.early_stop_init
-            #
-            # self.best_model_wts = copy.deepcopy(self.model.state_dict())
-
 
 if __name__ == '__main__':
     # 加载预设参数
@@ -654,9 +490,6 @@ if __name__ == '__main__':
     if rank == 0:
         logger = initialize_exp(cfgs)
         logger_path = get_dump_path(cfgs)
-        # tb_manager = TensorBoardManager(logger_path)
-        # tb_manager.start()
-        # print(f"TensorBoard started at {tb_manager.get_url()}")
         cfgs.time_stamp = "{0:%Y-%m-%dT%H-%M-%S/}".format(datetime.now())
 
         comment = f'bath_size={cfgs.batch_size} exp_id={cfgs.exp_id}'
@@ -667,11 +500,4 @@ if __name__ == '__main__':
     runner = Runner(cfgs, writer, logger, rank)
     runner.run()
 
-    # writer.close()
     logger.info("done!")
-
-    # if cfgs.dist and not cfgs.only_test:
-    #     dist.barrier()
-    #     dist.destroy_process_group()
-
-    # tb_manager.stop()

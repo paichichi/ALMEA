@@ -9,9 +9,8 @@ class config():
 
     def get_args(self):
         parser = argparse.ArgumentParser()
-        #可能需要调整的核心参数
         """
-        primary parms setting
+        primary parameters setting
         """
         parser.add_argument('--gpu', default=0, type=int)
         parser.add_argument('--eval_epoch', default=2, type=int, help='evaluate each n epoch')
@@ -60,7 +59,7 @@ class config():
         parser.add_argument("--num_layer", type=int, default=3)
 
         """
-        secodary parms setting
+        secondary parameters setting
         """
         parser.add_argument("--neg_cross_kg", type=int, default=0,
                             help="whether to force the negative samples in the opposite KG")
@@ -152,21 +151,6 @@ class config():
         self.cfg.dim = self.cfg.attr_dim
         self.cfg.max_position_embeddings = self.cfg.inner_view_num + 1
         assert self.cfg.hidden_size == self.cfg.attr_dim
-
-        # if self.cfg.enable_sota:
-        #     if self.cfg.il:
-        #         self.cfg.eval_epoch = max(2, self.cfg.eval_epoch)
-        #         self.cfg.weight_decay = max(0.0005, self.cfg.weight_decay)
-        #         if self.cfg.data_rate > 0.5:
-        #             self.cfg.weight_decay = max(0.001, self.cfg.weight_decay)
-        #         if self.cfg.data_choice == "DBP15K":
-        #             if not self.cfg.use_surface:
-        #                 self.cfg.weight_decay = max(0.001, self.cfg.weight_decay)
-        #     else:
-        #         if self.cfg.data_choice == "DBP15K" or "FBYG" in self.cfg.data_choice:
-        #             self.cfg.epoch = 250
-        #         else:
-        #             self.cfg.epoch = 500
 
         return self.cfg
 
