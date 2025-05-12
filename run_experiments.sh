@@ -12,7 +12,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python main.py \
             --data_choice   $DATASET \
             --data_split    "norm" \
             --data_rate     $DATA_RATE \
-            --epoch         300 \
+            --epoch         100 \
             --epoch_per_CYCLES 50 \
             --CYCLES        5 \
             --lr            0.001  \

@@ -62,8 +62,8 @@ class Runner:
         self.dataloader_init(train_set=self.train_set, eval_set=self.eval_set, test_set=self.test_set)
         self.model_list = [self.model]
 
-        train_epoch_1_stage = self.args.epoch
-        self.optim_init(self.args, total_epoch=train_epoch_1_stage)
+        # train_epoch_1_stage = self.args.epoch
+        self.optim_init(self.args)
         self.add_count = 0
 
 
@@ -101,7 +101,7 @@ class Runner:
 
     def dataloader_init(self, train_set=None, eval_set=None, test_set=None):
         bs = self.args.batch_size
-        # 将张量转换成numpy数组
+
         collator = Collator_base(self.args)
         self.args.workers = min([os.cpu_count(), self.args.batch_size, self.args.workers])
         if train_set is not None:
@@ -111,7 +111,7 @@ class Runner:
         if eval_set is not None:
             self.eval_dataloader = self._dataloader(eval_set, bs, collator)
 
-    def _load_model(self, model, model_name=None):
+    def _load_model(self, model):
         model.to(self.args.device)
         return model
 
@@ -133,12 +133,6 @@ class Runner:
         self.early_stop_count = self.early_stop_init
         self.stage = 0
 
-        # budgets = math.ceil(len(self.test_ill_) * (0.3 - self.args.data_rate))
-        # logger.info(f'The budget sizes is {budgets}')
-        # self.budget_per_round = math.ceil(budgets / 5)
-        # logger.info(f"The budget sizes per cycles is {self.budget_per_round}")
-
-        # total_epoch = self.args.epoch + 300 * (self.args.CYCLES - 1)
         with tqdm(total=self.args.epoch + self.args.epoch_per_CYCLES*self.args.CYCLES) as _tqdm:
             for cycle in range(self.args.CYCLES+1):
                 if cycle != 0:
@@ -146,6 +140,12 @@ class Runner:
                     self.logger.info(f'Incremental Training Start {cycle}')
                 else:
                     self.logger.info("-----------------------------------------------------------------------")
+                    self.logger.info(
+                        f"Training configuration: "
+                        f"Base model training (self.args.epoch = {self.args.epoch}), "
+                        f"Active learning cycles (self.args.CYCLES = {self.args.CYCLES}), "
+                        f"Epochs per cycle (self.args.epoch_per_CYCLES = {self.args.epoch_per_CYCLES})"
+                    )
                     self.logger.info("Training Start")
 
                 for i in range(self.args.epoch):
@@ -174,12 +174,8 @@ class Runner:
                     self.args.epoch = self.args.epoch_per_CYCLES
                 else:
                     break
-                break
 
         name = self._save_name_define()
-        # if self.best_model_wts is not None:
-        #     self.logger.info("load from the best model before final testing ... ")
-        #     self.model.load_state_dict(self.best_model_wts)
         self.test(save_name=f"{name}_test_ep{self.args.epoch}")
 
         if self.rank == 0:
