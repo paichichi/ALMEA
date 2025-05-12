@@ -474,7 +474,6 @@ class Runner:
             self.loss_log.update_acc(mrr_l2r)
 
 if __name__ == '__main__':
-    # 加载预设参数
 
     gc.collect()
     torch.cuda.empty_cache()
