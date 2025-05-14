@@ -172,4 +172,16 @@ mmkg
 Our experiments in this work are conducted exclusively on **FBDB15K** and **FBYG15K**.  
 We deliberately exclude **DBP15K** (*fr_en*, *ja_en*, *zh_en*) due to potential surface form leakage,  which may lead to unreliable or overestimated results. To ensure fair and trustworthy evaluation, we therefore abandon DBP15K in our main experimental analysis.
 
+## 💡 Acknowledgement
+
+We appreciate the following open-source projects for their contributions to the field of multimodal and entity alignment research, which have inspired and facilitated our work:
+
+- [MCLEA](https://github.com/lzxlin/MCLEA)
+- [MSNEA](https://github.com/liyichen-cly/MSNEA)
+- [EVA](https://github.com/cambridgeltl/eva)
+- [MMEA](https://github.com/liyichen-cly/MMEA)
+- [MEAformer](https://github.com/ZJLAB-AMMI/MEAformer)
+- [GEEA](https://github.com/ZJLAB-AMMI/GEEA)
+
+We sincerely thank the authors of these projects for their open-source contributions.
 
