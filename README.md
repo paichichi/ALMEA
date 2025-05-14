@@ -34,7 +34,7 @@ pip install -r requirements.txt
 - 
 ## 📚 Dataset
 
-- ❗**Note**: Download the dataset from [Google Drive (0.93 GB)](https://drive.google.com/file/d/1sdsqOfmdHcMqJqMZ_ZoQF0PELhli9NYE/view?usp=sharing) and unzip it to match the following directory structure:
+- ❗**Note**: Download the dataset from [Google Drive (0.93 GB)](https://drive.google.com/file/d/1cX1LEMwECwsadmBc3iMu5LTUS5wlwZ30/view?usp=sharing) and unzip it to match the following directory structure:
 ```text
 ROOT/
 ├── data/
@@ -98,3 +98,78 @@ ALEA/
 └── run_experiments.sh
 ```
 </details>
+
+## Data Path
+
+<details>
+  <summary>👈 🔎 Click</summary>
+
+```text
+mmkg
+├── DBP15K
+│   ├── fr_en
+│   │   ├── ent_ids_1
+│   │   ├── ent_ids_2
+│   │   ├── ill_ent_ids
+│   │   ├── training_attrs_1
+│   │   ├── training_attrs_2
+│   │   ├── triples_1
+│   │   └── triples_2
+│   ├── ja_en
+│   │   ├── ent_ids_1
+│   │   ├── ent_ids_2
+│   │   ├── ill_ent_ids
+│   │   ├── training_attrs_1
+│   │   ├── training_attrs_2
+│   │   ├── triples_1
+│   │   └── triples_2
+│   ├── translated_ent_name
+│   │   ├── dbp_fr_en.json
+│   │   ├── dbp_ja_en.json
+│   │   └── dbp_zh_en.json
+│   └── zh_en
+│       ├── ent_ids_1
+│       ├── ent_ids_2
+│       ├── ill_ent_ids
+│       ├── training_attrs_1
+│       ├── training_attrs_2
+│       ├── triples_1
+│       └── triples_2
+├── FBDB15K
+│   └── norm
+│       ├── ent_ids_1
+│       ├── ent_ids_2
+│       ├── ill_ent_ids
+│       ├── training_attrs_1
+│       ├── training_attrs_2
+│       ├── triples_1
+│       └── triples_2
+├── FBYG15K
+│   └── norm
+│       ├── ent_ids_1
+│       ├── ent_ids_2
+│       ├── ill_ent_ids
+│       ├── training_attrs_1
+│       ├── training_attrs_2
+│       ├── triples_1
+│       └── triples_2
+├── embedding
+│   └── glove.6B.300d.txt
+├── pkls
+│   ├── dbpedia_wikidata_15k_dense_GA_id_img_feature_dict.pkl
+│   ├── dbpedia_wikidata_15k_norm_GA_id_img_feature_dict.pkl
+│   ├── FBDB15K_id_img_feature_dict.pkl
+│   ├── FBYG15K_id_img_feature_dict.pkl
+│   ├── fr_en_GA_id_img_feature_dict.pkl
+│   ├── ja_en_GA_id_img_feature_dict.pkl
+│   └── zh_en_GA_id_img_feature_dict.pkl
+├── MEAformer
+└── dump
+```
+</details>
+
+⚠️ **Note**:  
+Our experiments in this work are conducted exclusively on **FBDB15K** and **FBYG15K**.  
+We deliberately exclude **DBP15K** (*fr_en*, *ja_en*, *zh_en*) due to potential surface form leakage,  which may lead to unreliable or overestimated results. To ensure fair and trustworthy evaluation, we therefore abandon DBP15K in our main experimental analysis.
+
+
