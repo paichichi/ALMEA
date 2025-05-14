@@ -34,18 +34,17 @@ pip install -r requirements.txt
 - 
 ## 📚 Dataset
 
-- ❗**Note**: Download the dataset from [Google Drive (0.93 GB)](https://drive.google.com/file/d/1cX1LEMwECwsadmBc3iMu5LTUS5wlwZ30/view?usp=sharing) and unzip it to match the following directory structure:
+❗**Note**: Download the dataset from [Google Drive (0.93 GB)](https://drive.google.com/file/d/1cX1LEMwECwsadmBc3iMu5LTUS5wlwZ30/view?usp=sharing) and unzip it to match the following directory structure:
 ```text
 ROOT/
 ├── data/
 │   └── mmkg/
-└── code/
+└── GitHub/
     └── ALMEA/
 ```
+❗**Note**:  
+The image modality provided in the MMEA repository has already been pre-processed using **ResNet-152**. If you wish to access the **raw entity images** from **DBP15K**, you can download them from [Baidu Cloud Drive (50 GB)](https://pan.baidu.com/s/1nRpSLJtTUEXDD4cgfSZZQQ) with the extraction code: `mmea`.
 
-- 🧾 **Optional**: Raw **Relations** & **Attributes** from DBP15K and MEAformer case study can be downloaded from [HuggingFace (150 MB)](https://huggingface.co/datasets/HackCz/DBP15K_raw/blob/main/DBP_raw.zip).
-
-- 🖼️ **Optional**: Raw **entity images** from DBP15K can be downloaded from [Baidu Cloud Drive (~50 GB)](https://pan.baidu.com/s/1nRpSLJtTUEXDD4cgfSZZQQ) with extraction code: `mmea`.
 
 <details>
   <summary>📌 Accessing Entity Images via Pickle</summary>
@@ -168,9 +167,31 @@ mmkg
 ```
 </details>
 
-⚠️ **Note**:  
+❗**Note**:  
 Our experiments in this work are conducted exclusively on **FBDB15K** and **FBYG15K**.  
 We deliberately exclude **DBP15K** (*fr_en*, *ja_en*, *zh_en*) due to potential surface form leakage,  which may lead to unreliable or overestimated results. To ensure fair and trustworthy evaluation, we therefore abandon DBP15K in our main experimental analysis.
+
+## 🧪 Experiment Script
+The following script executes a series of entity alignment experiments on two datasets: **FBDB15K** and **FBYG15K**, under varying initial training alignment seeds ratios and masking thresholds.
+```bash
+bash run_experiments.sh 0 FBDB15K 0.2 0.45
+bash run_experiments.sh 0 FBDB15K 0.5 0.45
+bash run_experiments.sh 0 FBDB15K 0.8 0.45
+
+bash run_experiments.sh 0 FBYG15K 0.2 0.50
+bash run_experiments.sh 0 FBYG15K 0.5 0.50
+bash run_experiments.sh 0 FBYG15K 0.8 0.50
+```
+### 🧪 Script Parameters
+
+The `run_experiments.sh` script takes the following four arguments:
+
+| Parameter     | Variable      | Description                                                                 |
+|---------------|---------------|-----------------------------------------------------------------------------|
+| `DEVICE`      | `$1`          | GPU ID to use for training (e.g., `0`)                                     |
+| `DATASET`     | `$2`          | Dataset name (`FBDB15K` or `FBYG15K`)                                      |
+| `DATA_RATE`   | `$3`          | Proportion of initial alignment seed pairs used for training (e.g., `0.2`, `0.5`, `0.8`)        |
+| `MASKING`     | `$4`          | Masking threshold for(e.g., `0.45` or `0.50`) for dynamically controls the contribution of each modality during training           |
 
 ## 💡 Acknowledgement
 
@@ -180,8 +201,8 @@ We appreciate the following open-source projects for their contributions to the 
 - [MSNEA](https://github.com/liyichen-cly/MSNEA)
 - [EVA](https://github.com/cambridgeltl/eva)
 - [MMEA](https://github.com/liyichen-cly/MMEA)
-- [MEAformer](https://github.com/ZJLAB-AMMI/MEAformer)
-- [GEEA](https://github.com/ZJLAB-AMMI/GEEA)
+- [MEAformer](https://github.com/zjukg/MEAformer)
+- [GEEA](https://github.com/zjukg/GEEA)
 
 We sincerely thank the authors of these projects for their open-source contributions.
 
