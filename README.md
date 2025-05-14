@@ -31,3 +31,13 @@ pip install -r requirements.txt
 - [Pandas](https://pandas.pydata.org/) (~= 2.2.3)
 - [EasyDict](https://pypi.org/project/easydict/) (~= 1.13)
 - [Unidecode](https://pypi.org/project/Unidecode/) (~= 1.3.8)
+- 
+## 📚 Dataset
+
+- ❗**Note**: Download the dataset from [Google Drive (1.26 GB)](https://drive.google.com/file/d/1VIWcc3KDcLcRImeSrF2AyhetBLq_gsnx/view?usp=sharing) and unzip it to match the following directory structure:
+```text
+ROOT/
+├── data/
+│   └── mmkg/
+└── code/
+    └── ALMEA/
