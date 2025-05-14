@@ -41,3 +41,60 @@ ROOT/
 │   └── mmkg/
 └── code/
     └── ALMEA/
+```
+
+- 🧾 **Optional**: Raw **Relations** & **Attributes** from DBP15K and MEAformer case study can be downloaded from [HuggingFace (150 MB)](https://huggingface.co/datasets/HackCz/DBP15K_raw/blob/main/DBP_raw.zip).
+
+- 🖼️ **Optional**: Raw **entity images** from DBP15K can be downloaded from [Baidu Cloud Drive (~50 GB)](https://pan.baidu.com/s/1nRpSLJtTUEXDD4cgfSZZQQ) with extraction code: `mmea`.
+
+<details>
+  <summary>📌 Accessing Entity Images via Pickle</summary>
+
+```python
+import pickle
+zh_images = pickle.load(open("eva_image_resources/dbp15k/zh_dbp15k_link_img_dict_full.pkl", 'rb'))
+print(zh_images["http://zh.dbpedia.org/resource/香港有線電視"].size)
+```
+</details>
+
+## 📦 Code Structure
+
+<details>
+  <summary>👈 🔎 Click</summary>
+
+```text
+ALEA/
+├── picture/
+├── src/
+│   ├── data_processing/
+│   │   ├── __init__.py
+│   │   ├── data.py
+│   │   ├── distributed_utils.py
+│   │   ├── tensorBoardManager.py
+│   │   └── utils.py
+│   ├── pre_train_models/
+│   │   ├── __init__.py
+│   │   ├── GNN_tools.py
+│   │   ├── layers.py
+│   │   ├── MCLEA.py
+│   │   ├── MCLEA_loss.py
+│   │   ├── MCLEA_tools.py
+│   │   ├── RANKER.py
+│   │   └── Tool_model.py
+│   ├── torchlight/
+│   │   ├── __init__.py
+│   │   ├── logger.py
+│   │   ├── metric.py
+│   │   └── utils.py
+│   ├── __init__.py
+│   ├── ACS_ADMM.py
+│   ├── almea.py
+│   └── Semantic_Calibration_KL.py
+├── config.py
+├── main.py
+├── README.md
+├── requirements.txt
+├── run.sh
+└── run_experiments.sh
+```
+</details>
