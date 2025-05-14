@@ -34,7 +34,7 @@ pip install -r requirements.txt
 - 
 ## 📚 Dataset
 
-- ❗**Note**: Download the dataset from [Google Drive (1.26 GB)](https://drive.google.com/file/d/1VIWcc3KDcLcRImeSrF2AyhetBLq_gsnx/view?usp=sharing) and unzip it to match the following directory structure:
+- ❗**Note**: Download the dataset from [Google Drive (0.93 GB)](https://drive.google.com/file/d/1sdsqOfmdHcMqJqMZ_ZoQF0PELhli9NYE/view?usp=sharing) and unzip it to match the following directory structure:
 ```text
 ROOT/
 ├── data/
