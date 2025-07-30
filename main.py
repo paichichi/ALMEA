@@ -61,6 +61,9 @@ class Runner:
         self.model = MCLEA(self.KGs, self.args)
         self.model = self._load_model(self.model)
 
+        total_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        self.logger.info(f"total params num: {total_params}")
+
 
     def data_init(self):
         self.KGs, self.non_train, self.train_set, self.eval_set, self.test_set, self.test_ill_ = load_data(self.logger,

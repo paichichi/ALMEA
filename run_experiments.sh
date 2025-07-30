@@ -6,7 +6,7 @@ MASKING=$4
 
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python main.py \
             --gpu           $DEVICE \
-            --eval_epoch    50 \
+            --eval_epoch    550 \
             --only_test     0 \
             --model_name    "MCLEA" \
             --data_choice   $DATASET \
