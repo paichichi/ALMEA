@@ -6,13 +6,13 @@ MASKING=$4
 
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python main.py \
             --gpu           $DEVICE \
-            --eval_epoch    550 \
+            --eval_epoch    100 \
             --only_test     0 \
             --model_name    "MCLEA" \
             --data_choice   $DATASET \
             --data_split    "norm" \
             --data_rate     $DATA_RATE \
-            --epoch         300 \
+            --epoch         600 \
             --epoch_per_CYCLES 50 \
             --CYCLES        5 \
             --lr            0.001  \

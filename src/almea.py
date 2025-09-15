@@ -174,12 +174,12 @@ class ALMEA(nn.Module):
             else:
                 self.num_none_concrete_feature += 1
 
-        self.masked_decoder_input = nn.Linear(300, 300)
-        self.masked_decoder = nn.Sequential(nn.Linear(300, 300),
-                                            nn.Tanh(),
-                                            nn.Dropout(0.5),
-                                            nn.BatchNorm1d(300),
-                                            nn.Linear(300, 300),)
+        # self.masked_decoder_input = nn.Linear(300, 300)
+        # self.masked_decoder = nn.Sequential(nn.Linear(300, 300),
+        #                                     nn.Tanh(),
+        #                                     nn.Dropout(0.5),
+        #                                     nn.BatchNorm1d(300),
+        #                                     nn.Linear(300, 300),)
         self.subgenerators = nn.ModuleList(self.subgenerators)
         self.none_linear_transforms = nn.ModuleList(self.none_linear_transforms)
         self.ModalWeightingMLP = nn.ModuleList(self.ModalWeightingMLP)

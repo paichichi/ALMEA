@@ -23,7 +23,7 @@ from src.data_processing.distributed_utils import is_main_process
 
 import torch.nn.functional as F
 import gc
-
+import copy
 
 
 class Runner:
@@ -55,6 +55,10 @@ class Runner:
 
         self.selected_pairs = []
         self.train_losses = []
+
+        self.best_hit_1 = 0.0
+        self.best_epoch = 0
+        self.best_data_list = []
 
 
     def model_choice(self):
@@ -163,7 +167,17 @@ class Runner:
                     break
 
         name = self._save_name_define()
+        if self.best_model_wts is not None:
+            self.logger.info("load from the best model before final testing ... ")
+            self.model.load_state_dict(self.best_model_wts)
+        print("[optimization finished!]")
+        print(
+            "best epoch is {}, hits@1 hits@10 MRR MR is: {}\n".format(
+                self.best_epoch, self.best_data_list
+            )
+        )
         self.test(save_name=f"{name}_test_ep{self.args.epoch}")
+        # self.test(save_name=f"{name}_test_ep{self.args.epoch}")
 
         if self.rank == 0:
             self.logger.info(f"min loss {self.loss_log.get_min_loss()}")
@@ -454,6 +468,7 @@ class Runner:
         mean_r2l /= test_right.size(0)
         mrr_l2r /= test_left.size(0)
         mrr_r2l /= test_right.size(0)
+
         for i in range(len(top_k)):
             acc_l2r[i] = round(acc_l2r[i] / test_left.size(0), 6)
             acc_r2l[i] = round(acc_r2l[i] / test_right.size(0), 6)
@@ -472,9 +487,20 @@ class Runner:
                 f"Ep {self.epoch} | Average: acc of top {top_k} = {avg_acc}, avg mr = {avg_mr:.3f}, avg mrr = {avg_mrr:.3f}{Loss_out}")
             self.early_stop_count -= 1
 
+        if acc_l2r[0] > self.best_hit_1:
+            self.best_hit_1 = acc_l2r[0]
+            self.best_epoch = self.epoch
+            self.best_data_list = [
+                acc_l2r[0],
+                acc_l2r[1],
+                mrr_l2r,
+                mean_l2r,
+            ]
         if mrr_l2r > max(self.loss_log.acc) and not last_epoch:
             self.logger.info(f"Best model update in Ep {self.epoch}: MRR from [{max(self.loss_log.acc)}] --> [{mrr_l2r}] ... ")
             self.loss_log.update_acc(mrr_l2r)
+            self.early_stop_count = self.early_stop_init
+            self.best_model_wts = copy.deepcopy(self.model.state_dict())
 
 if __name__ == '__main__':
 
